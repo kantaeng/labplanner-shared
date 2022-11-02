@@ -17,7 +17,7 @@ import org.ucb.c5.utils.Pair;
 
 /**
  *
- * @author J. Christopher Anderson
+ * @author Shahar Schwartz
  */
 public class LabPacketFactory {
 
@@ -28,8 +28,8 @@ public class LabPacketFactory {
      * Assumes all samples that are inputs or to-be-created are already in the
      * inventory, and the inventory is indexed
      *
-     * @param projName
-     * @param constf
+     * @param experimentName
+     * @param cfList
      * @param inventory
      * @return
      * @throws Exception
