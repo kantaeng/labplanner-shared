@@ -1,0 +1,13 @@
+>name: SerializeBoxExampleBox
+>description: A dummy box
+>location: minus20
+
+>>well	construct	label	side-label	concentration	clone	culture
+A1	construct0	Sample0	Sample0	miniprep	0	primary
+B2	construct1	Sample1	Sample1	miniprep	1	primary
+C3	construct2	Sample2	Sample2	miniprep	2	primary
+D4	construct3	Sample3	Sample3	miniprep	3	primary
+E5	construct4	Sample4	Sample4	miniprep	4	primary
+F6	construct5	Sample5	Sample5	miniprep	5	primary
+G7	construct6	Sample6	Sample6	miniprep	6	primary
+H8	construct7	Sample7	Sample7	miniprep	7	primary
