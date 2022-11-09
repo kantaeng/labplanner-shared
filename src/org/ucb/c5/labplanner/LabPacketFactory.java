@@ -270,15 +270,27 @@ public class LabPacketFactory {
 
     private List<LabSheet> handleDigest(List<Step> digestSteps, String expName, Inventory inventory) {
         List<LabSheet> sheets = new ArrayList<>();
+        if (digestSteps.isEmpty()) {
+            return sheets;
+        }
 
-        String title = expName + ": PCR";
+        String title = expName + ": Digest";
         List<Location> sources = new ArrayList<>();
         List<Location> destinations = new ArrayList<>();
-        String program;
-        String protocol;
-        String instrument;
-        List<String> notes;
-        Recipe reaction;
+        String program = "";
+        String protocol = "";
+        String instrument = "";
+        List<String> notes = new ArrayList<>();
+        List<Pair<Reagent, Double>> mastermix = null; //TODO:  implement for 4+ samples
+        List<Pair<Reagent, Double>> reaction = new ArrayList<>();
+        reaction.add(new Pair(Reagent.ddH2O, 39.0 - X.size())); //TODO figure out how to add and isolate enzymes: what is Step's relationship with this function?
+        reaction.add(new Pair(Reagent.PrimeSTAR_GXL_Buffer_5x, 10.0)); //TODO: replace with correct buffer
+        reaction.add(new Pair(Reagent.template, 1.0));
+
+
+        Recipe recipe = new Recipe(mastermix, reaction);
+
+
 
         //Package the Digestion sheet
         //Create a zymo sheet
@@ -291,8 +303,8 @@ public class LabPacketFactory {
         String title = expName + ": Ligation";
         List<Location> sources = new ArrayList<>();
         List<Location> destinations = new ArrayList<>();
-        String program;
-        String protocol;
+        String program = "";
+        String protocol = "";
         String instrument;
         List<String> notes;
         Recipe reaction;
