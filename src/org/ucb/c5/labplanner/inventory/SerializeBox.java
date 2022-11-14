@@ -4,12 +4,13 @@ import org.ucb.c5.labplanner.inventory.model.Box;
 import org.ucb.c5.labplanner.inventory.model.Sample;
 import org.ucb.c5.utils.FileUtils;
 
+import java.util.function.Consumer;
+
 /**
  * Serialize a Box to human-readable text file
  *
- * TODO: add authors
- *
  * @author J. Christopher Anderson
+ * @author Michael Danielian
  */
 public class SerializeBox {
 
@@ -18,14 +19,14 @@ public class SerializeBox {
 
     /**
      * @param abox The Box to be serialized
-     * @param abspath The path and filename for the destination file
+     * @param path The path and filename for the destination file
      * @throws Exception
      */
     public void run(Box abox, String path) throws Exception {
         StringBuilder sb = new StringBuilder();
-        sb.append(">name: ").append(abox.getName()).append("\n");
-        sb.append(">description: ").append(abox.getDescription()).append("\n");
-        sb.append(">location: ").append(abox.getLocation()).append("\n\n");
+        sb.append(">name").append('\t').append(abox.getName()).append("\n");
+        sb.append(">description").append('\t').append(abox.getDescription()).append("\n");
+        sb.append(">location").append('\t').append(abox.getLocation()).append("\n\n");
 
         //Put in sample information
         sb.append(">>well\tconstruct\tlabel\tside-label\tconcentration\tclone\tculture\n");
@@ -47,6 +48,96 @@ public class SerializeBox {
         }
 
         FileUtils.writeFile(sb.toString(), path);
+    }
+
+    /**
+     * @param abox The Box to be serialized
+     * @param path The path and filename for the destination file
+     * @throws Exception
+     */
+    public void runRowColumn(Box abox, String path) throws Exception {
+
+        //develop the string builder
+        StringBuilder sb = new StringBuilder();
+        sb.append(">name").append('\t').append(abox.getName()).append("\n");
+        sb.append(">description").append('\t').append(abox.getDescription()).append("\n");
+        sb.append(">location").append('\t').append(abox.getLocation()).append("\n\n");
+
+        //test all six possible arrays that can be input
+        for (int i = 0; i < 6; i++) {
+            int sbCheckpoint = sb.length();
+            boolean flag = false;
+            sb.append(inputLabelText(i) + "\t1\t2\t3\t4\t5\t6\t7\t8\t9"+"\n");
+
+            Sample[][] input = abox.getSamples();
+            for (int j = 0; j < input.length; j++) {
+                sb.append((char)(65 + j)).append("\t");
+                for (int k = 0; k < input[0].length; k++) {
+                    if (input[j][k] != null || !input[j][k].equals("")) {
+                        flag = true;
+                        sb.append(SampleFunction(i, input[j][k])).append("\t");
+                    }
+                }
+                sb.append("\n");
+            }
+            sb.append("\n");
+
+            //this means there is no needed text output
+            if(!flag) {
+                sb.replace(sbCheckpoint, sb.length(), "");
+            }
+        }
+
+        FileUtils.writeFile(sb.toString(), path);
+    }
+
+    private String inputLabelText(int a) {
+        switch(a) {
+            case 0:
+                return ">>label";
+            case 1:
+                return ">>side_label";
+            case 2:
+                return ">>concentration";
+            case 3:
+                return ">>construct";
+            case 4:
+                return ">>culture";
+            case 5:
+                return ">>clone";
+        }
+        return "";
+    }
+
+    private String SampleFunction(int i, Sample a) {
+        switch(i) {
+            case 0:
+                if (a.getLabel() == null|| a.getLabel().equals(""))
+                    return "";
+                return a.getLabel();
+            case 1:
+                if (a.getSidelabel() == null|| a.getSidelabel().equals(""))
+                    return "";
+                return a.getSidelabel();
+            case 2:
+                if (a.getConcentration() == null || a.getConcentration().equals(""))
+                    return "";
+                return a.getConcentration().toString();
+            case 3:
+                if (a.getConstruct() == null || a.getConstruct().equals(""))
+                    return "";
+                return a.getConstruct();
+            case 4:
+                if (a.getCulture() == null || a.getCulture().equals(""))
+                    return "";
+                return a.getCulture().toString();
+            case 5:
+                if (a.getClone() == null || a.getClone().equals("")) {
+                    return "";
+                }
+                return a.getClone();
+        }
+        return "";
     }
 
     /**
@@ -76,12 +167,17 @@ public class SerializeBox {
             wells[x][x] = asample;
         }
 
-        //Create an example instance of Box and serialize
-        Box abox = new Box("SerializeBoxExampleBox", "A dummy box", "minus20", wells);
-        String abspath = "SerializeBoxExampleBox.txt"; //TODO:  put in a path
+        //testing different representations
+        ParseBox a = new ParseBox();
+        Box abox = a.run("LabPlannerData/inventory/Box_Lyc6.txt");
+        String abspath = "runEx.txt";
+        String abspath_b = "rowColumnEx.txt";
+
         //Serialize the box
         SerializeBox parser = new SerializeBox();
         parser.initiate();
+
         parser.run(abox, abspath);
+        parser.runRowColumn(abox, abspath_b);
     }
 }
