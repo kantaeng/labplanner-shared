@@ -1,8 +1,7 @@
 package org.ucb.c5.labplanner;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
 import org.ucb.c5.constructionfile.model.*;
 import org.ucb.c5.labplanner.inventory.model.Inventory;
 import org.ucb.c5.labplanner.inventory.model.Location;
@@ -21,7 +20,23 @@ import org.ucb.c5.utils.Pair;
  */
 public class LabPacketFactory {
 
+    private final Map<String, Reagent> enzymeMap = new HashMap<String, Reagent>();
+
     public void initiate() throws Exception {
+        enzymeMap.put("Phusion", Reagent.Phusion);
+        enzymeMap.put("Q5_polymerase", Reagent.Q5_polymerase);
+        enzymeMap.put("PrimeSTAR_GXL_DNA_Polymerase", Reagent.PrimeSTAR_GXL_DNA_Polymerase);
+        enzymeMap.put("DpnI", Reagent.DpnI);
+        enzymeMap.put("BamHI", Reagent.BamHI);
+        enzymeMap.put("BglII", Reagent.BglII);
+        enzymeMap.put("BsaI", Reagent.BsaI);
+        enzymeMap.put("BsmBI", Reagent.BsmBI);
+        enzymeMap.put("T4_DNA_ligase", Reagent.T4_DNA_ligase);
+        enzymeMap.put("SpeI", Reagent.SpeI);
+        enzymeMap.put("XhoI", Reagent.XhoI);
+        enzymeMap.put("XbaI", Reagent.XbaI);
+        enzymeMap.put("PstI", Reagent.PstI);
+        enzymeMap.put("Hindiii", Reagent.Hindiii);
     }
 
     /**
@@ -268,32 +283,162 @@ public class LabPacketFactory {
         return sheets;
     }
 
-    private List<LabSheet> handleDigest(List<Step> digestSteps, String expName, Inventory inventory) {
+
+    private List<LabSheet> handleDigest(List<Step> digestSteps, String expName, Inventory inventory) throws Exception {
         List<LabSheet> sheets = new ArrayList<>();
+
         if (digestSteps.isEmpty()) {
             return sheets;
         }
 
         String title = expName + ": Digest";
-        List<Location> sources = new ArrayList<>();
-        List<Location> destinations = new ArrayList<>();
         String program = "";
         String protocol = "";
         String instrument = "";
         List<String> notes = new ArrayList<>();
-        List<Pair<Reagent, Double>> mastermix = null; //TODO:  implement for 4+ samples
+
+        //Pull out locations
+        List<Location> sources = new ArrayList<>();
+        List<Location> destinations = new ArrayList<>();
         List<Pair<Reagent, Double>> reaction = new ArrayList<>();
-        reaction.add(new Pair(Reagent.ddH2O, 39.0 - X.size())); //TODO figure out how to add and isolate enzymes: what is Step's relationship with this function?
-        reaction.add(new Pair(Reagent.PrimeSTAR_GXL_Buffer_5x, 10.0)); //TODO: replace with correct buffer
-        reaction.add(new Pair(Reagent.template, 1.0));
 
+        for (Step astep : digestSteps) {
+            Digestion digest = (Digestion) astep;
 
-        Recipe recipe = new Recipe(mastermix, reaction);
+            //Pull out sources for enzymes and substrates
+            {
+                String forSubstrate = digest.getSubstrate();
+                Location chosenLoc = null;
+                Set<Location> forLocs = inventory.getLocations(forSubstrate);
+                for (Location loc : forLocs) {
+                    Concentration conc = inventory.getConcentration(loc);
+                    if (conc == Concentration.uM10) {
+                        chosenLoc = loc;
+                        break;
+                    }
+                }
 
+                if (chosenLoc == null) {
+                    throw new Exception("Null location for " + forSubstrate);
+                }
+                sources.add(chosenLoc);
+                reaction.add(new Pair(Reagent.template, 1.0));
+            }
 
+            {
+                List<String> enzymes = digest.getEnzymes();
+                Location chosenLoc;
+                for (String enzyme : enzymes) {
+                    chosenLoc = null;
+                    Set<Location> forLocs = inventory.getLocations(enzyme);
+                    for (Location loc : forLocs) {
+                        Concentration conc = inventory.getConcentration(loc);
+                        if (conc == Concentration.uM10) {
+                            chosenLoc = loc;
+                            break;
+                        }
+                    }
 
-        //Package the Digestion sheet
-        //Create a zymo sheet
+                    if (chosenLoc == null) {
+                        throw new Exception("Null location for " + enzyme);
+                    }
+                    sources.add(chosenLoc);
+
+                    Reagent reagent = enzymeMap.get(enzyme);
+                    if (reagent == null) {
+                        throw new Exception("No enzyme matches query " + enzyme);
+                    }
+                    reaction.add(new Pair(reagent, 1.0));
+                }
+            }
+            reaction.add(new Pair(Reagent.NEB_Buffer_2_10x, 5.0));
+            double sum = 0;
+            for (Pair p : reaction) {
+                sum = sum + (double) p.getValue();
+            }
+            reaction.add(new Pair(Reagent.ddH2O, 20.0 - sum));
+            Recipe recipe = new Recipe(reaction, null);
+            LabSheet sheet = new LabSheet(title, digestSteps, sources, destinations, program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+
+        }
+        /**
+         * ***************
+         * Create a Gel sheet
+         */
+        List<Location> zymoDestinations = new ArrayList<>();
+        {
+            title = expName + ": Gel";
+            program = null;
+            protocol = null;
+            instrument = null;
+            Recipe recipe = null;
+            notes = new ArrayList<>();
+
+            //Pull out locations
+            for (Step astep : digestSteps) {
+                Digestion digest = (Digestion) astep;
+
+                //Pull out the digest product zymo locations
+                {
+                    String pdtName = digest.getProduct();
+                    Location chosenLoc = null;
+                    Set<Location> forLocs = inventory.getLocations(pdtName);
+                    inner:
+                    for (Location loc : forLocs) {  //This will retrieve the zymo cleanup samples
+                        Concentration conc = inventory.getConcentration(loc);
+                        if (conc == Concentration.zymo) {
+                            chosenLoc = loc;
+                            break;
+                        }
+                    }
+
+                    if (chosenLoc == null) {
+                        throw new Exception("Null location for " + pdtName);
+                    }
+                    zymoDestinations.add(chosenLoc);
+                }
+            }
+
+            //Create the steps
+            List<Step> gelSteps = new ArrayList<>();
+            for (Location loc : zymoDestinations) {
+                String label = loc.getLabel();
+                int size = 3800;  //TODO:  replace with lookup based on sequence length from CF
+                Gel gs = new Gel(label, size);
+                gelSteps.add(gs);
+            }
+
+            //Package the Gel sheet
+            LabSheet sheet = new LabSheet(title, gelSteps, new ArrayList<>(), new ArrayList<>(), program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+        }
+
+        /**
+         * **************************
+         * Create a zymo Cleanup sheet
+         */
+        {
+            title = expName + ": Cleanup";
+            program = null;
+            protocol = null;
+            instrument = null;
+            Recipe recipe = null;
+            notes = new ArrayList<>();
+
+            //Create the steps
+            List<Step> zymoSteps = new ArrayList<>();
+            for (Location loc : zymoDestinations) {
+                String label = loc.getLabel();
+                double volume = 20.0;
+                Cleanup cu = new Cleanup(label, volume);
+                zymoSteps.add(cu);
+            }
+
+            //Package the Gel sheet
+            LabSheet sheet = new LabSheet(title, zymoSteps, new ArrayList<>(), zymoDestinations, program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+        }
         return sheets;
     }
 
@@ -397,5 +542,5 @@ public class LabPacketFactory {
     public static void main(String[] args) {
 
     }
-
 }
+
