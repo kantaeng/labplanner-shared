@@ -312,7 +312,8 @@ public class LabPacketFactory {
                 Set<Location> forLocs = inventory.getLocations(forSubstrate);
                 for (Location loc : forLocs) {
                     Concentration conc = inventory.getConcentration(loc);
-                    if (conc == Concentration.uM10) {
+                    if (conc == Concentration.zymo || conc == Concentration.miniprep
+                            || conc == Concentration.dil20x) {
                         chosenLoc = loc;
                         break;
                     }
@@ -332,11 +333,8 @@ public class LabPacketFactory {
                     chosenLoc = null;
                     Set<Location> forLocs = inventory.getLocations(enzyme);
                     for (Location loc : forLocs) {
-                        Concentration conc = inventory.getConcentration(loc);
-                        if (conc == Concentration.uM10) {
-                            chosenLoc = loc;
-                            break;
-                        }
+                        chosenLoc = loc;
+                        break;
                     }
 
                     if (chosenLoc == null) {
@@ -351,7 +349,7 @@ public class LabPacketFactory {
                     reaction.add(new Pair(reagent, 1.0));
                 }
             }
-            reaction.add(new Pair(Reagent.NEB_Buffer_2_10x, 5.0));
+            reaction.add(new Pair(Reagent.NEB_Buffer_2_10x, 2.0));
             double sum = 0;
             for (Pair p : reaction) {
                 sum = sum + (double) p.getValue();
@@ -442,20 +440,155 @@ public class LabPacketFactory {
         return sheets;
     }
 
-    private List<LabSheet> handleLigate(List<Step> ligateSteps, String expName, Inventory inventory) {
+    private List<LabSheet> handleLigate(List<Step> ligateSteps, String expName, Inventory inventory) throws Exception {
         List<LabSheet> sheets = new ArrayList<>();
 
+        if (ligateSteps.isEmpty()) {
+            return sheets;
+        }
+
         String title = expName + ": Ligation";
-        List<Location> sources = new ArrayList<>();
-        List<Location> destinations = new ArrayList<>();
         String program = "";
         String protocol = "";
-        String instrument;
-        List<String> notes;
-        Recipe reaction;
+        String instrument = "";
+        List<String> notes = new ArrayList<>();
 
-        //Create a ligation sheet
-        //TODO:  create a ligation labsheet and add to sheets
+        //Pull out locations
+        List<Location> sources = new ArrayList<>();
+        List<Location> destinations = new ArrayList<>();
+        List<Pair<Reagent, Double>> reaction = new ArrayList<>();
+
+        for (Step astep : ligateSteps) {
+            Ligation ligation = (Ligation) astep;
+
+            //Pull out sources for fragments
+
+            {
+                List<String> fragments = ligation.getFragments();
+                Location chosenLoc;
+                int count = 0;
+                for (String fragment : fragments) {
+                    chosenLoc = null;
+                    Set<Location> forLocs = inventory.getLocations(fragment);
+                    for (Location loc : forLocs) {
+                        Concentration conc = inventory.getConcentration(loc);
+                        if (conc == Concentration.zymo || conc == Concentration.dil20x) {
+                            chosenLoc = loc;
+                            break;
+                        }
+                    }
+
+                    if (chosenLoc == null) {
+                        throw new Exception("Null location for " + fragment);
+                    }
+                    sources.add(chosenLoc);
+                    Reagent reagent = null;
+                    if (count == 0) {
+                        reagent = Reagent.frag1;
+                    } else if (count == 1) {
+                        reagent = Reagent.frag2;
+                    } else if (count == 2) {
+                        reagent = Reagent.frag3;
+                    } else if (count == 3) {
+                        reagent = Reagent.frag4;
+                    }
+
+                    if (reagent == null) {
+                        throw new Exception("Using more than 4 fragments at one is not recommended for ligation");
+                    }
+                    reaction.add(new Pair(reagent, 1.0));
+                    count++;
+                }
+            }
+            reaction.add(new Pair(Reagent.T4_DNA_ligase, 1.0));
+            reaction.add(new Pair(Reagent.T4_DNA_Ligase_Buffer_10x, 2.0));
+            double sum = 0;
+            for (Pair p : reaction) {
+                sum = sum + (double) p.getValue();
+            }
+            reaction.add(new Pair(Reagent.ddH2O, 20.0 - sum));
+            Recipe recipe = new Recipe(reaction, null);
+            LabSheet sheet = new LabSheet(title, ligateSteps, sources, destinations, program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+
+        }
+        /**
+         * ***************
+         * Create a Gel sheet
+         */
+        List<Location> zymoDestinations = new ArrayList<>();
+        {
+            title = expName + ": Gel";
+            program = null;
+            protocol = null;
+            instrument = null;
+            Recipe recipe = null;
+            notes = new ArrayList<>();
+
+            //Pull out locations
+            for (Step astep : ligateSteps) {
+                Ligation ligation = (Ligation) astep;
+
+                //Pull out the digest product zymo locations
+                {
+                    String pdtName = ligation.getProduct();
+                    Location chosenLoc = null;
+                    Set<Location> forLocs = inventory.getLocations(pdtName);
+                    inner:
+                    for (Location loc : forLocs) {  //This will retrieve the zymo cleanup samples
+                        Concentration conc = inventory.getConcentration(loc);
+                        if (conc == Concentration.zymo) {
+                            chosenLoc = loc;
+                            break;
+                        }
+                    }
+
+                    if (chosenLoc == null) {
+                        throw new Exception("Null location for " + pdtName);
+                    }
+                    zymoDestinations.add(chosenLoc);
+                }
+            }
+
+            //Create the steps
+            List<Step> gelSteps = new ArrayList<>();
+            for (Location loc : zymoDestinations) {
+                String label = loc.getLabel();
+                int size = 3800;  //TODO:  replace with lookup based on sequence length from CF
+                Gel gs = new Gel(label, size);
+                gelSteps.add(gs);
+            }
+
+            //Package the Gel sheet
+            LabSheet sheet = new LabSheet(title, gelSteps, new ArrayList<>(), new ArrayList<>(), program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+        }
+
+        /**
+         * **************************
+         * Create a zymo Cleanup sheet
+         */
+        {
+            title = expName + ": Cleanup";
+            program = null;
+            protocol = null;
+            instrument = null;
+            Recipe recipe = null;
+            notes = new ArrayList<>();
+
+            //Create the steps
+            List<Step> zymoSteps = new ArrayList<>();
+            for (Location loc : zymoDestinations) {
+                String label = loc.getLabel();
+                double volume = 20.0;
+                Cleanup cu = new Cleanup(label, volume);
+                zymoSteps.add(cu);
+            }
+
+            //Package the Gel sheet
+            LabSheet sheet = new LabSheet(title, zymoSteps, new ArrayList<>(), zymoDestinations, program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+        }
         return sheets;
     }
 
