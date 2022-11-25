@@ -14,6 +14,8 @@ import org.ucb.c5.labplanner.labpacket.model.Reagent;
 import org.ucb.c5.labplanner.labpacket.model.Recipe;
 import org.ucb.c5.utils.Pair;
 
+import javax.swing.*;
+
 /**
  *
  * @author Shahar Schwartz
@@ -21,6 +23,7 @@ import org.ucb.c5.utils.Pair;
 public class LabPacketFactory {
 
     private final Map<String, Reagent> enzymeMap = new HashMap<String, Reagent>();
+    private final Map<String, Reagent> strainMap = new HashMap<String, Reagent>();
 
     public void initiate() throws Exception {
         enzymeMap.put("Phusion", Reagent.Phusion);
@@ -37,6 +40,15 @@ public class LabPacketFactory {
         enzymeMap.put("XbaI", Reagent.XbaI);
         enzymeMap.put("PstI", Reagent.PstI);
         enzymeMap.put("Hindiii", Reagent.Hindiii);
+
+        strainMap.put("zymo_10b", Reagent.zymo_10b);
+        strainMap.put("Zymo_5a", Reagent.Zymo_5a);
+        strainMap.put("JM109", Reagent.JM109);
+        strainMap.put("DH10B", Reagent.DH10B);
+        strainMap.put("MC1061", Reagent.MC1061);
+        strainMap.put("Ec100D_pir116", Reagent.Ec100D_pir116);
+        strainMap.put("Ec100D_pir_plus", Reagent.Ec100D_pir_plus);
+
     }
 
     /**
@@ -302,6 +314,7 @@ public class LabPacketFactory {
         List<Location> destinations = new ArrayList<>();
         List<Pair<Reagent, Double>> reaction = new ArrayList<>();
 
+        {
         for (Step astep : digestSteps) {
             Digestion digest = (Digestion) astep;
 
@@ -349,6 +362,7 @@ public class LabPacketFactory {
                     reaction.add(new Pair(reagent, 1.0));
                 }
             }
+        }
             reaction.add(new Pair(Reagent.NEB_Buffer_2_10x, 2.0));
             double sum = 0;
             for (Pair p : reaction) {
@@ -458,6 +472,7 @@ public class LabPacketFactory {
         List<Location> destinations = new ArrayList<>();
         List<Pair<Reagent, Double>> reaction = new ArrayList<>();
 
+        {
         for (Step astep : ligateSteps) {
             Ligation ligation = (Ligation) astep;
 
@@ -500,6 +515,7 @@ public class LabPacketFactory {
                     count++;
                 }
             }
+        }
             reaction.add(new Pair(Reagent.T4_DNA_ligase, 1.0));
             reaction.add(new Pair(Reagent.T4_DNA_Ligase_Buffer_10x, 2.0));
             double sum = 0;
@@ -660,15 +676,172 @@ public class LabPacketFactory {
         return sheets;
     }
 
-    private List<LabSheet> handleTransform(List<Step> transformSteps, String expName, Inventory inventory) {
+    private List<LabSheet> handleTransform(List<Step> transformSteps, String expName, Inventory inventory) throws Exception {
         List<LabSheet> sheets = new ArrayList<>();
         //Create a Transform sheet
         //TODO:  create a Transform labsheet and add to sheets
+        if (transformSteps.isEmpty()) {
+            return sheets;
+        }
+        {
+        String title = expName + ": Transform";
+        String program = "";
+        String protocol = "";
+        String instrument = "";
+        List<String> notes = new ArrayList<>();
+
+        List<Location> sources = new ArrayList<>();
+        List<Location> destinations = new ArrayList<>();
+        List<Pair<Reagent, Double>> reaction = new ArrayList<>();
+
+        {
+            for (Step astep : transformSteps) {
+                Transformation transformation = (Transformation) astep;
+
+                //Pull out sources for dna, strain, and antibiotic
+                {
+                    String forDNA = transformation.getDna();
+                    Location chosenLoc = null;
+                    Set<Location> forLocs = inventory.getLocations(forDNA);
+                    for (Location loc : forLocs) {
+                        Concentration conc = inventory.getConcentration(loc);
+                        if (conc == Concentration.zymo || conc == Concentration.miniprep
+                                || conc == Concentration.dil20x) {
+                            chosenLoc = loc;
+                            break;
+                        }
+                    }
+
+                    if (chosenLoc == null) {
+                        throw new Exception("Null location for " + forDNA);
+                    }
+                    sources.add(chosenLoc);
+                    reaction.add(new Pair(Reagent.template, 1.0));
+                }
+
+                {
+                    String forStrain = transformation.getStrain();
+                    Location chosenLoc = null;
+                    Set<Location> forLocs = inventory.getLocations(forStrain);
+                    for (Location loc : forLocs) {
+                        chosenLoc = loc;
+                        break;
+                    }
+
+                    if (chosenLoc == null) {
+                        throw new Exception("Null location for " + forStrain);
+                    }
+                    sources.add(chosenLoc);
+                    Reagent reagent = strainMap.get(forStrain);
+                    reaction.add(new Pair(reagent, 250.0));
+                }
+
+                {
+                    String forAntibiotic = transformation.getAntibiotic().name();
+                    Location chosenLoc = null;
+                    Set<Location> forLocs = inventory.getLocations(forAntibiotic);
+                    for (Location loc : forLocs) {
+                        chosenLoc = loc;
+                        break;
+                    }
+
+                    if (chosenLoc == null) {
+                        throw new Exception("Null location for " + forAntibiotic);
+                    }
+                    sources.add(chosenLoc);
+                    reaction.add(new Pair(transformation.getAntibiotic(), 2.5));
+                }
+                reaction.add(new Pair(Reagent.lb, 400));
+                if (transformation.getAntibiotic().equals(Antibiotic.Spec)){
+                   reaction.add(new Pair(Reagent.lb_agar_100ug_ml_specto, 1));
+                } else if (transformation.getAntibiotic().equals(Antibiotic.Kan)){
+                    reaction.add(new Pair(Reagent.lb_agar_50ug_ml_kan, 1));
+                } else if (transformation.getAntibiotic().equals(Antibiotic.Cam)){
+                    reaction.add(new Pair(Reagent.lb_agar_100ug_ml_cm, 1));
+                } else if (transformation.getAntibiotic().equals(Antibiotic.Amp)){
+                    reaction.add(new Pair(Reagent.lb_agar_100ug_ml_amp, 1));
+                }
+            }
+            Recipe recipe = new Recipe(reaction, null);
+            LabSheet sheet = new LabSheet(title, transformSteps, sources, destinations, program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+        }
+    }
 
         //Create a Pick sheet
         //TODO:  create a picking/inoculation labsheet and add to sheets
+        {
+        List<Location> pickDestinations = new ArrayList<>();
+            {
+                String title = expName + ": Pick";
+                String program = null;
+                String protocol = null;
+                String instrument = null;
+                Recipe recipe = null;
+                List<String> notes = new ArrayList<>();
+
+                //Pull out locations
+                for (Step astep : transformSteps) {
+                    Transformation transformation = (Transformation) astep;
+
+                    //Pull out the transformation products
+                    {
+                        String pdtName = transformation.getProduct();
+                        Location chosenLoc = null;
+                        Set<Location> forLocs = inventory.getLocations(pdtName);
+                        inner:
+                        for (Location loc : forLocs) {
+                            Concentration conc = inventory.getConcentration(loc);
+                            chosenLoc = loc;
+                            break;
+                        }
+
+                        if (chosenLoc == null) {
+                            throw new Exception("Null location for " + pdtName);
+                        }
+                        pickDestinations.add(chosenLoc);
+                    }
+                }
+
+                //Create the steps
+                //TODO replace everything under here with pick sheet, not gel
+                List<Step> pickSteps = new ArrayList<>();
+                for (Location loc : pickDestinations) {
+                    String label = loc.getLabel();
+                    int size = 3800;
+                    Gel gs = new Gel(label, size);
+                    pickSteps.add(gs);
+                }
+
+                //Package the pick sheet
+                LabSheet sheet = new LabSheet(title, pickSteps, new ArrayList<>(), new ArrayList<>(), program, protocol, instrument, notes, recipe);
+                sheets.add(sheet);
+            }
+
+
         //Create a Miniprep sheet
         //TODO:  create a miniprep labsheet and add to sheets
+
+            String title = expName + ": Miniprep";
+            String program = null;
+            String protocol = null;
+            String instrument = null;
+            Recipe recipe = null;
+            List<String> notes = new ArrayList<>();
+
+            //Create the steps
+            List<Step> miniprepSteps = new ArrayList<>();
+            for (Location loc : pickDestinations) {
+                String label = loc.getLabel();
+                double volume = 20.0;
+                Cleanup cu = new Cleanup(label, volume);
+                miniprepSteps.add(cu);
+            }
+
+            //Package the Gel sheet
+            LabSheet sheet = new LabSheet(title, miniprepSteps, new ArrayList<>(), pickDestinations, program, protocol, instrument, notes, recipe);
+            sheets.add(sheet);
+        }
         return sheets;
     }
 
