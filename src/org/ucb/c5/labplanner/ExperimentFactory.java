@@ -46,6 +46,9 @@ public class ExperimentFactory {
         //Package up and return the Experiment object
         Map<String, Polynucleotide> sequences = new HashMap<>();
         //TODO:  may need to do something here wrt seqs in CF's vs in Experiment
+        for (ConstructionFile cf : cfList) {
+            sequences.putAll(cf.getSequences());
+        }
 
         Experiment exp = new Experiment(experimentName, cfList, oligoList, sequences, packet, inventory);
         return exp;
