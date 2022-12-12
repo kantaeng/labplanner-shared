@@ -19,6 +19,7 @@ import org.ucb.c5.utils.Pair;
  * Highest-level Function for designing a single CRISPR experiment
  *
  * @author J. Christopher Anderson
+ * @author David Blayvas
  */
 public class ExperimentFactory {
 
@@ -45,7 +46,7 @@ public class ExperimentFactory {
 
         //Package up and return the Experiment object
         Map<String, Polynucleotide> sequences = new HashMap<>();
-        //TODO:  may need to do something here wrt seqs in CF's vs in Experiment
+        
         for (ConstructionFile cf : cfList) {
             sequences.putAll(cf.getSequences());
         }
