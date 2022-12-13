@@ -1,20 +1,28 @@
 package org.ucb.c5.labplanner.labpacket;
 
+import org.ucb.c5.labplanner.LabPacketFactory;
 import org.ucb.c5.labplanner.labpacket.model.LabPacket;
+import org.ucb.c5.labplanner.labpacket.model.LabSheet;
+
+import java.util.List;
 
 /**
  * Inputs a LabPacket and serializes it to files in a specified folder.
- * The LabPacket contains both LabSheets and modified Boxes.  The task
+ * The LabPacket contains both LabSheets and modified Boxes. The task
  * of serializing a LabSheet is relayed to SerializeLabSheet, while 
  * serializing a Box is relayed to SerializeBox
  * 
- * TODO: add authors
+ * @author Michael Danielian
  * @author J. Christopher Anderson
  */
+
 public class SerializeLabPacket {
-    
-    public void initiate()  throws Exception {
-        //TODO: write me, or delete comment if not needed
+
+    private SerializeLabSheet serializeSheet;
+
+    public void initiate() throws Exception {
+        serializeSheet = new SerializeLabSheet();
+        serializeSheet.initiate();
     }
     
     /**
@@ -23,10 +31,27 @@ public class SerializeLabPacket {
      * @throws Exception 
      */
     public void run(LabPacket packet, String path) throws Exception {
-        //TODO: write me
+        List<LabSheet> sheets = packet.getSheets();
+        int l = sheets.size();
+
+        for (int i = 0; i < l; i++) {
+            serializeSheet.run(sheets.get(i), path);
+        }
     }
     
-    public static void main(String[] args) {
-        //TODO: create an example to demo run
+    public static void main(String[] args) throws Exception {
+        SerializeLabPacket serialize = new SerializeLabPacket();
+        serialize.initiate();
+
+        LabPacketFactory factory = new LabPacketFactory();
+        factory.initiate();
+
+        LabPacket a = null;
+        String path = "serializedLabPacket.txt";
+
+        //LabPacket a = new LabPacket();
+        //LabPacket a = factory.run();
+
+        serialize.run(a, path);
     }
 }
