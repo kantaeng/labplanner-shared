@@ -850,66 +850,69 @@ public class LabPacketFactory {
     }
 
     public static void main(String[] args) throws Exception {
-        LabPacketFactory lpf = new LabPacketFactory();
-        lpf.initiate();
-        ArrayList<ConstructionFile> cfList = new ArrayList<>();
-
-        Sample[][] samples = new Sample[9][9];
-        samples[0][0] = new Sample("miniprep", null, Concentration.miniprep, null, Sample.Culture.primary, null);
-        samples[0][1] = new Sample("zymo", null, Concentration.zymo, null, Sample.Culture.primary, null);
-        samples[0][2] = new Sample("uM100", null, Concentration.uM100, null, Sample.Culture.primary, null);
-        samples[0][3] = new Sample("uM10", null, Concentration.uM10, null, Sample.Culture.primary, null);
-        samples[0][4] = new Sample("dil20x", null, Concentration.dil20x, null, Sample.Culture.primary, null);
-
-        org.ucb.c5.labplanner.inventory.model.Box box = new org.ucb.c5.labplanner.inventory.model.Box("box1", null, "location", samples);
-        List<org.ucb.c5.labplanner.inventory.model.Box> boxes = new ArrayList<>();
-        boxes.add(box);
-
-        Location one = new Location("box1", 0, 0, "miniprep", null);
-        Location two = new Location("box1", 0, 1, "zymo", null);
-        Location three = new Location("box1", 0, 2, "uM100", null);
-        Location four = new Location("box1", 0, 3, "uM10", null);
-        Location five = new Location("box1", 0, 4, "dil20x", null);
-
-        //populate hashmaps
-        HashMap<String, Set<Location>> constructToLocations = new HashMap<>();
-        HashMap<Location, Sample.Concentration> locToConc = new HashMap<>();
-        HashMap<Location, String> locToClone = new HashMap<>();
-        HashMap<Location, Sample.Culture> locToCulture = new HashMap<>();
-
-        locToConc.put(one, miniprep);
-        locToConc.put(two, zymo);
-        locToConc.put(three, Concentration.uM100);
-        locToConc.put(four, Concentration.uM10);
-        locToConc.put(five, Concentration.dil20x);
-
-        locToCulture.put(one, Sample.Culture.primary);
-        locToCulture.put(two, Sample.Culture.primary);
-        locToCulture.put(three, Sample.Culture.primary);
-        locToCulture.put(four, Sample.Culture.primary);
-        locToCulture.put(five, Sample.Culture.primary);
-
-        Inventory inventory = new Inventory(boxes, constructToLocations, locToConc, locToClone, locToCulture);
-        lpf.run("exp", cfList, inventory);
-
-
-        //put the reagents in the hashmaps as well
-
-        PCR pcr = new PCR(null, null, null, null);
-        Digestion digest = new Digestion(null, null, 1, null);
-        Ligation ligate = new Ligation(null, null);
-        Assembly assembly = new Assembly(null, null, null);
-        Transformation transform = new Transformation(null, null, null, null);
-        ArrayList<Step> steps = new ArrayList<>();
-        steps.add(pcr);
-        steps.add(digest);
-        steps.add(ligate);
-        steps.add(assembly);
-        steps.add(transform);
-
-        ConstructionFile cf = new ConstructionFile(steps, null, new HashMap<String, Polynucleotide>());
-        cfList.add(cf);
-        lpf.run("exp", cfList, inventory);
+//        LabPacketFactory lpf = new LabPacketFactory();
+//        lpf.initiate();
+//        ArrayList<ConstructionFile> cfList = new ArrayList<>();
+//
+//        Sample[][] samples = new Sample[9][9];
+//        samples[0][0] = new Sample("miniprep", null, Concentration.miniprep, null, Sample.Culture.primary, null);
+//        samples[0][1] = new Sample("zymo", null, Concentration.zymo, null, Sample.Culture.primary, null);
+//        samples[0][2] = new Sample("uM100", null, Concentration.uM100, null, Sample.Culture.primary, null);
+//        samples[0][3] = new Sample("uM10", null, Concentration.uM10, null, Sample.Culture.primary, null);
+//        samples[0][4] = new Sample("dil20x", null, Concentration.dil20x, null, Sample.Culture.primary, null);
+//        samples[1][0] = new Sample("oligo1", null, Concentration.uM10, null,Sample.Culture.primary, null);
+//        samples[1][1] = new Sample("oligo2", null, Concentration.uM10, null,Sample.Culture.primary, null);
+//
+//        org.ucb.c5.labplanner.inventory.model.Box box = new org.ucb.c5.labplanner.inventory.model.Box("box1", null, "location", samples);
+//        List<org.ucb.c5.labplanner.inventory.model.Box> boxes = new ArrayList<>();
+//        boxes.add(box);
+//
+//        Location one = new Location("box1", 0, 0, "miniprep", null);
+//        Location two = new Location("box1", 0, 1, "zymo", null);
+//        Location three = new Location("box1", 0, 2, "uM100", null);
+//        Location four = new Location("box1", 0, 3, "uM10", null);
+//        Location five = new Location("box1", 0, 4, "dil20x", null);
+//        Location oligo1 = new Location("box1", 1, 0, "oligo1", null);
+//
+//        //populate hashmaps
+//        HashMap<String, Set<Location>> constructToLocations = new HashMap<>();
+//        HashMap<Location, Sample.Concentration> locToConc = new HashMap<>();
+//        HashMap<Location, String> locToClone = new HashMap<>();
+//        HashMap<Location, Sample.Culture> locToCulture = new HashMap<>();
+//
+//        locToConc.put(one, miniprep);
+//        locToConc.put(two, zymo);
+//        locToConc.put(three, Concentration.uM100);
+//        locToConc.put(four, Concentration.uM10);
+//        locToConc.put(five, Concentration.dil20x);
+//
+//        locToCulture.put(one, Sample.Culture.primary);
+//        locToCulture.put(two, Sample.Culture.primary);
+//        locToCulture.put(three, Sample.Culture.primary);
+//        locToCulture.put(four, Sample.Culture.primary);
+//        locToCulture.put(five, Sample.Culture.primary);
+//
+//        Inventory inventory = new Inventory(boxes, constructToLocations, locToConc, locToClone, locToCulture);
+//        lpf.run("exp", cfList, inventory);
+//
+//
+//        //put the reagents in the hashmaps as well
+//
+//        PCR pcr = new PCR("oligo1", "oligo2", null, null);
+//        Digestion digest = new Digestion(null, null, 1, null);
+//        Ligation ligate = new Ligation(null, null);
+//        Assembly assembly = new Assembly(null, null, null);
+//        Transformation transform = new Transformation(null, null, null, null);
+//        ArrayList<Step> steps = new ArrayList<>();
+//        steps.add(pcr);
+//        steps.add(digest);
+//        steps.add(ligate);
+//        steps.add(assembly);
+//        steps.add(transform);
+//
+//        ConstructionFile cf = new ConstructionFile(steps, null, new HashMap<String, Polynucleotide>());
+//        cfList.add(cf);
+//        lpf.run("exp", cfList, inventory);
 
     }
 }
